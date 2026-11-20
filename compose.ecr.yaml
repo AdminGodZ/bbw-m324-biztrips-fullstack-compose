@@ -1,13 +1,13 @@
 # Override: run the released images from Amazon ECR instead of building them locally.
 #   ./scripts/ecr-login.sh
 #   docker compose -f compose.yaml -f compose.ecr.yaml up --wait
-# Versions: BACKEND_VERSION / FRONTEND_VERSION in .env (Git tag without "v", e.g. 5.0.1).
+# Versions: BACKEND_VERSION / FRONTEND_VERSION in .env (Git tag without "v", e.g. 5.0.2).
 services:
   backend:
     build: !reset null
-    image: ${ECR_REGISTRY:?run ./scripts/ecr-login.sh or set ECR_REGISTRY}/bbw-m324-refcard05-backend:${BACKEND_VERSION:-5.0.1}
+    image: ${ECR_REGISTRY:?run ./scripts/ecr-login.sh or set ECR_REGISTRY}/bbw-m324-refcard05-backend:${BACKEND_VERSION:-5.0.2}
     pull_policy: always
   frontend:
     build: !reset null
-    image: ${ECR_REGISTRY:?run ./scripts/ecr-login.sh or set ECR_REGISTRY}/bbw-m324-refcard05-frontend:${FRONTEND_VERSION:-5.0.1}
+    image: ${ECR_REGISTRY:?run ./scripts/ecr-login.sh or set ECR_REGISTRY}/bbw-m324-refcard05-frontend:${FRONTEND_VERSION:-5.0.2}
     pull_policy: always
