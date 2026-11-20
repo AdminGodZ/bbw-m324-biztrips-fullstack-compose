@@ -1,0 +1,8 @@
+[submodule "backend"]
+	path = backend
+	url = https://github.com/AdminGodZ/bbw-m324-biztrips-fullstack-actions-aws-backend.git
+	branch = main
+[submodule "frontend"]
+	path = frontend
+	url = https://github.com/AdminGodZ/bbw-m324-biztrips-fullstack-actions-aws-frontend.git
+	branch = main

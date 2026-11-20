@@ -1,0 +1,37 @@
+# Proves that the complete system starts with Docker Compose from the pinned submodule versions
+# (MariaDB + S3 mock + backend + frontend) and passes the end-to-end smoke test.
+name: Compose smoke test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: docker compose up + smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+      - name: Pinned versions
+        run: git submodule status | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Build and start (waits for all health checks)
+        run: docker compose up --build --wait --wait-timeout 300
+      - name: End-to-end smoke test
+        run: ./scripts/smoke-test.sh
+      - name: Container status
+        if: always()
+        run: docker compose ps
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+      - name: Clean up
+        if: always()
+        run: docker compose down -v

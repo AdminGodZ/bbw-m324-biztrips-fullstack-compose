@@ -1,0 +1,93 @@
+# M324 RefCard05 (Tim Held) - complete Business Trips system locally:
+#   db (MariaDB, same major version as Amazon RDS) + s3 (S3-compatible mock) + backend + frontend
+#
+#   docker compose up --build --wait     build both images from the submodules and start everything
+#   docker compose -f compose.yaml -f compose.ecr.yaml up --wait   use the released images from Amazon ECR
+#
+# Start order is enforced with health checks: db + s3 healthy -> backend ready -> frontend.
+name: biztrips-refcard05
+
+services:
+  db:
+    image: mariadb:11.8
+    environment:
+      MARIADB_DATABASE: ${DB_NAME:-db_biztrips}
+      MARIADB_USER: ${DB_USER:-biztrips}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-local-dev-only}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-local-root-only}
+    volumes:
+      - db-data:/var/lib/mysql
+    ports:
+      - "127.0.0.1:${DB_PORT_LOCAL:-3306}:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  s3:
+    # Local stand-in for Amazon S3 so the backend runs the same S3 code path as on AWS - without AWS access.
+    image: adobe/s3mock:5.2.3
+    user: root
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: ${S3_BUCKET:-biztrips-photos-local}
+      COM_ADOBE_TESTING_S3MOCK_STORE_ROOT: /data
+      COM_ADOBE_TESTING_S3MOCK_STORE_RETAIN_FILES_ON_EXIT: "true"
+    volumes:
+      - s3-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ${BACKEND_DIR:-./backend}
+      args:
+        APP_VERSION: local
+    image: ${BACKEND_IMAGE:-biztrips-backend:local}
+    environment:
+      SPRING_PROFILES_ACTIVE: mariadb
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: ${DB_NAME:-db_biztrips}
+      DB_USER: ${DB_USER:-biztrips}
+      DB_PASSWORD: ${DB_PASSWORD:-local-dev-only}
+      APP_STORAGE_TYPE: s3
+      APP_STORAGE_S3_BUCKET: ${S3_BUCKET:-biztrips-photos-local}
+      APP_STORAGE_S3_PREFIX: employee-photos/
+      APP_STORAGE_S3_ENDPOINT: http://s3:9090
+      AWS_REGION: us-east-1
+      # Dummy values for the local S3 mock only - they are not AWS credentials.
+      AWS_ACCESS_KEY_ID: local-s3-mock
+      AWS_SECRET_ACCESS_KEY: local-s3-mock
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
+    depends_on:
+      db: {condition: service_healthy}
+      s3: {condition: service_healthy}
+    # Health check: from the image (GET /actuator/health/readiness -> db + s3)
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ${FRONTEND_DIR:-./frontend}
+      args:
+        APP_VERSION: local
+        VITE_API_BASE_URL: /
+    image: ${FRONTEND_IMAGE:-biztrips-frontend:local}
+    environment:
+      BACKEND_ORIGIN: http://backend:8080
+      API_BASE_URL: /   # browser -> nginx -> backend (also for ECR images built with the ALB URL)
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      backend: {condition: service_healthy}
+    restart: unless-stopped
+
+volumes:
+  db-data:
+  s3-data:
