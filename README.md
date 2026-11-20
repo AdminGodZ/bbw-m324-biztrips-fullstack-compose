@@ -17,20 +17,22 @@ Dieses Repo bündelt die lokale Entwicklung (Docker Compose) und dient als Einst
 
 ```mermaid
 flowchart LR
-  subgraph GitHub
-    fe[Frontend-Repo<br/>Pipeline] ; be[Backend-Repo<br/>Pipeline] ; co[Compose-Repo<br/>Submodule v5.0.2]
+  subgraph gh["GitHub"]
+    fe["Frontend-Repo<br/>Pipeline"]
+    be["Backend-Repo<br/>Pipeline"]
+    co["Compose-Repo<br/>Submodule v5.0.2"]
   end
-  fe -->|Image 5.0.2| ecrF[(ECR frontend)]
-  be -->|Image 5.0.2| ecrB[(ECR backend)]
-  subgraph AWS us-east-1 · Stack bbw-m324-refcard05
-    alb[ALB] -->|/| f[ECS Service<br/>biztrips-frontend · nginx]
-    alb -->|/v1, /actuator| b[ECS Service<br/>biztrips-backend · Spring Boot]
-    b --> rds[(RDS MariaDB 11.8)]
-    b --> s3[(S3 Fotos)]
+  fe -->|"Image 5.0.2"| ecrF[("ECR frontend")]
+  be -->|"Image 5.0.2"| ecrB[("ECR backend")]
+  subgraph aws["AWS us-east-1 · Stack bbw-m324-refcard05"]
+    alb["ALB"] -->|"/"| f["ECS Service<br/>biztrips-frontend · nginx"]
+    alb -->|"/v1, /actuator"| b["ECS Service<br/>biztrips-backend · Spring Boot"]
+    b --> rds[("RDS MariaDB 11.8")]
+    b --> s3[("S3 Fotos")]
   end
   ecrF --> f
   ecrB --> b
-  co -.->|docker compose| local[lokal: nginx + Spring Boot<br/>+ MariaDB 11.8 + S3-Mock]
+  co -.->|"docker compose"| local["lokal: nginx + Spring Boot<br/>+ MariaDB 11.8 + S3-Mock"]
 ```
 
 ## Lokale Entwicklung: das ganze System starten
